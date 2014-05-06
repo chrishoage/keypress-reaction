@@ -122,7 +122,6 @@
     					$jumbotron.html('Wait...');
     					var timeout = setTimeout(function() {
     						if (!testRunning) return;
-    						console.log("hello world " + keyTest);
     						$jumbotron.html(keyTest);
     						var stamp = _.now();
     						$body.one('keydown', function(event) {
