@@ -105,7 +105,7 @@
     					var correct = results.find({ correct: true });
     					var all = results.all();
 
-    					$correct.find('span').html(Math.round((correct.length / all.length) * 100);
+    					$correct.find('span').html(Math.round((correct.length / all.length) * 100));
 
     					var average = _(all).pluck('time').reduce(function(n, i) {
     						return n + i;
