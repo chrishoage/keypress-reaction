@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Keypress Reaction Time Test</title>
+
+    <!-- Bootstrap -->
+    <!-- Latest compiled and minified CSS -->
+		<link rel="stylesheet" href="//netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+      <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+    <style>
+    	body {
+    		padding-top: 10px;
+    	}
+			.jumbotron h2{
+				text-align: center;
+			}
+    </style>
+  </head>
+  <body>
+  	<div class="container-fluid">
+			<div class="row">
+				<div class="col-md-6">
+					<div class="jumbotron">
+					  <h2>Press Start</h2>
+					</div>
+					<form action="#" role="form">
+						<div class="form-group">
+							<label for="keys">Keys</label>
+							<input type="text" class="form-control" value="1,2,3,4,5,6" name="keys" id="keys">
+						</div>
+						<div class="form-group">
+							<button class="btn btn-primary" id="submit">Start Test</button>
+							<button class="btn btn-warning" id="clear-resluts">Clear Results</button>
+						</div>
+					</form>
+				</div>
+				<div class="col-md-6">
+					<table class="table table-striped">
+						<thead>
+							<tr>
+								<th>Key</th>
+								<th>Pressed</th>
+								<th>Time</th>
+							</tr>
+						</thead>
+						<tbody>
+						</tbody>
+						<tfoot>
+							<tr>
+								<th colspan="2" id="correct">
+									<span></span>% correct
+								</th>
+								<th id="average">
+									<span></span>ms Average
+								</th>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			</div>
+  	</div>
+  	<script id="table-row" type="text/template">
+  		<tr<% if (!correct) { %> class="danger" <% } %>>
+  			<td><%=key%></td>
+  			<td><%=pressed%></td>
+  			<td><%=time%>ms</td>
+  		</tr>
+  	</script>
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.0/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/depot/0.1.6/depot.min.js"></script>
+    <script>
+    	//document ready
+    	$(function() {
+    		var $body = $('body'),
+    				$jumbotron = $('.jumbotron h2'),
+    				$form = $('form'),
+    				$tableBody = $('table tbody'),
+    				$correct = $('#correct'),
+    				$average = $('#average'),
+    				$clearResults = $('#clear-resluts'),
+    				$submit = $('#submit'),
+    				tableTemplate = $('#table-row').html(),
+    				testRunning = false,
+    				runningKeyTest = null,
+    				tableRow = _.template(tableTemplate),
+    				results = depot('testResults');
+
+
+    				_.each(results.all(), function(result) {
+    					$tableBody.append(tableRow(result));
+    				});
+    				updateTotals();
+
+    				function updateReults (result) {
+    					results.save(result);
+    					$tableBody.append(tableRow(result));
+    					updateTotals();
+    				}
+
+    				function updateTotals () {
+    					var correct = results.find({ correct: true });
+    					var all = results.all();
+
+    					$correct.find('span').html(Math.round((correct.length / all.length) * 100) || 'N/A');
+
+    					var average = _(all).pluck('time').reduce(function(n, i) {
+    						return n + i;
+    					});
+
+    					$average.find('span').html(Math.round(average / all.length) || 'N/A');
+
+    				}
+
+    				function runKeyTest (keys) {
+    					var keysArray = _.isArray(keys) ? keys : keys.split(',');
+    					var keyTest = keysArray[_.random(keysArray.length - 1)];
+    					var time = _.random(0, 5);
+    					$jumbotron.html('Wait...');
+    					var timeout = setTimeout(function() {
+    						if (!testRunning) return;
+    						console.log("hello world " + keyTest);
+    						$jumbotron.html(keyTest);
+    						var stamp = _.now();
+    						$body.one('keydown', function(event) {
+    							event.preventDefault();
+    							var ms = _.now() - stamp;
+    							updateReults({
+    								'key': keyTest,
+    								'pressed': String.fromCharCode(event.keyCode),
+    								'time': ms,
+    								'correct': (keyTest.charCodeAt(0) === event.keyCode)
+    							});
+    							runKeyTest(keysArray);
+    						});
+
+    					}, time * 1000);
+    					return timeout;
+    				}
+
+    				$form.on('submit', function(event) {
+    					event.preventDefault();
+    					if (testRunning) {
+	    					$submit.removeClass('btn-danger').addClass('btn-primary').html('Start Test');
+	    					testRunning = false;
+	    					clearTimeout(runningKeyTest);
+	    					$body.unbind('keydown');
+	    					$jumbotron.html('Press Start');
+    					} else {
+	    					$submit.removeClass('btn-primary').addClass('btn-danger').html('Stop Test');
+		  					testRunning = true;
+		  					runningKeyTest = runKeyTest($form.find('input').val());
+    					}
+    				});
+
+    				$clearResults.on('click', function(event) {
+    					event.preventDefault();
+    					results.destroyAll();
+    					$tableBody.empty();
+    					updateTotals();
+    				});
+    	});
+    </script>
+  </body>
+</html>
